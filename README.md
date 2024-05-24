@@ -11,7 +11,7 @@ This Python script facilitates the creation of music remixes by applying various
 
 1. **Clone the Repository:**
    ```
-   git clone [<repository_url>](https://github.com/FireEmblem59/audio-modification.git)
+   git clone https://github.com/FireEmblem59/audio-modification.git
    cd audio-modification
    ```
 
