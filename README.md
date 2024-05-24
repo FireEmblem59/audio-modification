@@ -5,18 +5,14 @@ This Python script facilitates the creation of music remixes by applying various
 ## Prerequisites
 
 - Python 3.x installed on your system.
-- Required Python packages installed:
-  - pytube
-  - pysndfx
-  - moviepy
-  - pydub
+- A code editor software (like vscode)
 
 ## Usage
 
 1. **Clone the Repository:**
    ```
-   git clone <repository_url>
-   cd <repository_name>
+   git clone [<repository_url>](https://github.com/FireEmblem59/audio-modification.git)
+   cd audio-modification
    ```
 
 2. **Install Dependencies:**
