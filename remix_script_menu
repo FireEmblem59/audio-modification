@@ -1,0 +1,328 @@
+#!/usr/bin/env python
+
+import os
+import ssl
+import argparse
+import datetime
+import re
+import sys
+import shlex
+from subprocess import Popen, PIPE
+from pytube import YouTube
+from pysndfx import AudioEffectsChain
+import moviepy.editor as mp
+from pydub import AudioSegment
+
+# Disable certificate verification (for educational purposes only)
+ssl._create_default_https_context = ssl._create_unverified_context
+
+# Colors for terminal output
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def start_screen():
+    print(f"{bcolors.HEADER}Welcome to the Audio Manipulation Tool!{bcolors.ENDC}")
+    print("Select an option:")
+    print("1. Download and convert a YouTube video to MP3")
+    print("2. Apply effects to an existing MP3 file")
+    print("3. Help")
+    print("4. Exit")
+    choice = input(
+        f"{bcolors.OKCYAN}Enter your choice (1/2/3/4): {bcolors.ENDC}")
+    return choice
+
+
+def show_help():
+    print(f"{bcolors.OKGREEN}Help Information:{bcolors.ENDC}")
+    print("This script allows you to:")
+    print("- Download a YouTube video and convert it to MP3 format.")
+    print("- Apply various audio effects to an existing MP3 file.")
+    print()
+    print(f"{bcolors.HEADER}Command-Line Arguments:{bcolors.ENDC}")
+    print("You can use the following command-line arguments to perform these actions:")
+    print(f"{bcolors.OKCYAN}-u, --url{bcolors.ENDC}         YouTube URL to download and convert to MP3.")
+    print(f"{bcolors.OKCYAN}-a, --audio{bcolors.ENDC}       Path to an existing MP3 file to apply effects.")
+    print(f"{bcolors.OKCYAN}-o, --output{bcolors.ENDC}      Name of the output file (without extension).")
+    print(f"{bcolors.OKCYAN}-s, --speed{{bcolors.ENDC}}       Ratio of new playback speed to old speed (default: 1.0).")
+    print(f"{bcolors.OKCYAN}-p, --pitch{{bcolors.ENDC}}       Pitch shift (100ths of a semitone) (default: 0.0).")
+    print(f"{bcolors.OKCYAN}-l, --lowpass{{bcolors.ENDC}}     Cutoff for lowpass filter in Hz (default: 3500).")
+    print(f"{bcolors.OKCYAN}-b, --bass{bcolors.ENDC}        Bass boost amount in dB.")
+    print(f"{bcolors.OKCYAN}-g, --gain{bcolors.ENDC}        Gain amount in dB.")
+    print(f"{bcolors.OKCYAN}--oops{bcolors.ENDC}            Remove center-panned audio.")
+    print(f"{bcolors.OKCYAN}--phaser{bcolors.ENDC}          Apply a phaser effect.")
+    print(f"{bcolors.OKCYAN}--tremolo{bcolors.ENDC}         Apply a tremolo effect.")
+    print(f"{bcolors.OKCYAN}--compand{bcolors.ENDC}         Compress and expand audio.")
+    print(f"{bcolors.OKCYAN}--no-reverb{bcolors.ENDC}       Remove the reverb effect.")
+    print()
+    print(f"{bcolors.HEADER}Examples:{bcolors.ENDC}")
+    print("1. Download a YouTube video and apply tremolo effect:")
+    print(f"{bcolors.OKBLUE}python remix_script.py -u 'https://www.youtube.com/watch?v=example' --tremolo{bcolors.ENDC}")
+    print("2. Apply effects to an existing MP3 file:")
+    print(f"{bcolors.OKBLUE}python remix_script.py -a 'audio.mp3' -o 'output.mp3' --speed 0.75 --pitch -75 --bass 10{bcolors.ENDC}")
+    print()
+    print(f"{bcolors.HEADER}Interactive Mode:{bcolors.ENDC}")
+    print("If you run the script without any command-line arguments, you will be presented with an interactive menu to guide you through the process.")
+    print(f"{bcolors.OKCYAN}Press Enter to return to the main menu...{bcolors.ENDC}")
+    input()
+
+
+def download_video(url, output_dir):
+    try:
+        youtube = YouTube(url)
+        video = youtube.streams.get_highest_resolution()
+        video_filename = video.default_filename.replace(" ", "_")
+        current_dir = os.getcwd()
+        os.chdir(output_dir)
+        video.download(filename=video_filename)
+        os.chdir(current_dir)
+        return video_filename
+    except Exception as e:
+        print(f"{bcolors.FAIL}Error downloading video: {str(e)}{bcolors.ENDC}")
+        return None
+
+
+def convert_to_mp3(video_path, output_dir):
+    try:
+        video = mp.VideoFileClip(video_path)
+        audio = video.audio
+        mp3_filename = os.path.splitext(
+            os.path.basename(video_path))[0] + ".mp3"
+        mp3_filename = re.sub(r"[()]", "", mp3_filename).replace(" ", "_")
+        mp3_path = os.path.join(output_dir, mp3_filename)
+        audio.write_audiofile(mp3_path, codec='libmp3lame')
+        os.remove(video_path)
+        return mp3_filename
+    except Exception as e:
+        print(f"{bcolors.FAIL}Error converting to MP3: {str(e)}{bcolors.ENDC}")
+        return None
+
+
+def apply_vaporwave_effects(audio_input, audio_output, speed_ratio, pitch_shift, lowpass_cutoff, bass_boost=None, gain_db=None, oops=False, phaser=False, tremolo=False, compand=False, no_reverb=False):
+    try:
+        fx = AudioEffectsChain()
+        if bass_boost is not None:
+            bass_boost_effect = f'bass {bass_boost}'
+            fx = fx.custom(bass_boost_effect)
+        fx = fx.pitch(pitch_shift)
+        if oops:
+            fx = fx.custom("oops")
+        if tremolo:
+            fx = fx.tremolo(freq=500, depth=50)
+        if phaser:
+            fx = fx.phaser(0.9, 0.8, 2, 0.2, 0.5)
+        if gain_db is not None:
+            fx = fx.gain(gain_db)
+        if compand:
+            fx = fx.compand()
+        fx = fx.speed(speed_ratio).lowpass(lowpass_cutoff)
+        if not no_reverb:
+            fx = fx.reverb()
+        fx(audio_input, audio_output)
+    except Exception as e:
+        if str(e) == "invalid literal for int() with base 10: b''":
+            print(
+                f"{bcolors.FAIL}Please make sure that there is no space in the audio file's name.{{bcolors.ENDC}}")
+            print(audio_input)
+            rename = input(
+                f"{bcolors.WARNING}Would you like to rename the file? (y/n): {bcolors.ENDC}")
+            if rename == 'y':
+                new_name = input(
+                    f"{bcolors.WARNING}Enter a new name for the file: {bcolors.ENDC}")
+                output_string = re.sub(".mp3", "", str(new_name))
+                audio_output = output_string + ".mp3".replace("'", "_")
+                apply_vaporwave_effects(
+                    shlex.quote(audio_input),
+                    audio_output,
+                    speed_ratio,
+                    pitch_shift,
+                    lowpass_cutoff,
+                    bass_boost=bass_boost,
+                    gain_db=gain_db,
+                    oops=oops,
+                    phaser=phaser,
+                    tremolo=tremolo,
+                    compand=compand,
+                    no_reverb=no_reverb,
+                )
+            else:
+                print(
+                    f"{bcolors.FAIL}Error: Cannot proceed without a valid file name.{{bcolors.ENDC}}")
+                return
+        else:
+            print(
+                f"{bcolors.FAIL}Error applying audio effects: {{str(e)}}{{bcolors.ENDC}}")
+            return
+
+
+def validate_youtube_url(url):
+    if not (re.match(r'^https?://(www\.)?youtube\.com/watch\?v=', url) or re.match(r'^https?://youtu.be/', url)):
+        print(f"{bcolors.FAIL}Invalid YouTube URL{bcolors.ENDC}")
+        return False
+    return True
+
+
+def check_file_existence(file_path):
+    if not os.path.isfile(file_path):
+        print(f"{bcolors.FAIL}File not found: {file_path}{bcolors.ENDC}")
+        return False
+    return True
+
+
+def check_directory_writable(directory_path):
+    if not os.access(directory_path, os.W_OK):
+        print(
+            f"{bcolors.FAIL}Directory not writable: {{directory_path}}{{bcolors.ENDC}}")
+        return False
+    return True
+
+
+def apply_effects(audio_input, effect):
+    output_name = input(
+        f"{bcolors.OKCYAN}Enter the name of the output file (without extension): {bcolors.ENDC}")
+    if not output_name:
+        output_name = f"{audio_input}_{effect}"
+    output_string = re.sub(".mp3", "", str(output_name))
+    audio_output = output_string + ".mp3".replace("'", "_")
+    if effect == 'slowed_reversed':
+        speed_ratio = 0.75
+        pitch_shift = -75
+    elif effect == 'sped_up':
+        speed_ratio = 1.25
+        pitch_shift = 75
+    else:
+        speed_ratio = 1
+        pitch_shift = 0
+        try:
+            AudioSegment.from_file(audio_input).export(
+                audio_output, format="mp3")
+        except Exception as e:
+            print(
+                f"{bcolors.FAIL}Error exporting original audio: {{str(e)}}{{bcolors.ENDC}}")
+            return
+    try:
+        apply_vaporwave_effects(
+            shlex.quote(audio_input),
+            audio_output,
+            speed_ratio,
+            pitch_shift,
+            lowpass_cutoff=3500,
+        )
+    except Exception as e:
+        print(f"{bcolors.FAIL}Error applying effects: {str(e)}{bcolors.ENDC}")
+        return
+    print(f"{bcolors.OKGREEN}Script finished at {{datetime.datetime.now().strftime('%H:%M:%S')}}{{bcolors.ENDC}}")
+    print(f"{bcolors.OKGREEN}Output MP3 file: {audio_output}{bcolors.ENDC}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Creates a music remix (slowed + reverb or sped up) of a given MP3 file"
+    )
+    parser.add_argument("-o", "--output", dest="output_name",
+                        help="Name of output file", type=str)
+    parser.add_argument("-a", "--audio", dest="audio_input",
+                        help="Input audio file to modify (.mp3)", type=str)
+    parser.add_argument("-u", "--url", dest="youtube_url",
+                        help="YouTube URL to download and vaporise", type=str)
+    parser.add_argument("-s", "--speed", dest="speed_ratio",
+                        help="Ratio of new playback speed to old speed.", type=float, default=1.0)
+    parser.add_argument("-p", "--pitch", dest="pitch_shift",
+                        help="Pitch shift (100ths of a semitone).", type=float, default=0.0)
+    parser.add_argument("-l", "--lowpass", dest="lowpass_cutoff",
+                        help="Cutoff for lowpass filter (Hz).", type=int, default=3500)
+    parser.add_argument("-b", "--bass", dest="bass_boost",
+                        help="Bass boost amount (dB).", type=int)
+    parser.add_argument("-g", "--gain", dest="gain_db",
+                        help="Gain amount (dB).", type=int)
+    parser.add_argument(
+        "--oops", help="Removes center-panned audio.", action="store_true")
+    parser.add_argument(
+        "--phaser", help="Applies a phaser effect.", action="store_true")
+    parser.add_argument(
+        "--tremolo", help="Applies a tremolo effect.", action="store_true")
+    parser.add_argument(
+        "--compand", help="Compresses and expands audio.", action="store_true")
+    parser.add_argument(
+        "--no-reverb", help="Removes the reverb effect.", action="store_true")
+
+    args = parser.parse_args()
+
+    if args.youtube_url:
+        if not validate_youtube_url(args.youtube_url):
+            sys.exit(1)
+        output_dir = os.getcwd()
+        if not check_directory_writable(output_dir):
+            sys.exit(1)
+        video_filename = download_video(args.youtube_url, output_dir)
+        if not video_filename:
+            sys.exit(1)
+        audio_input = convert_to_mp3(video_filename, output_dir)
+        if not audio_input:
+            sys.exit(1)
+    elif args.audio_input:
+        if not check_file_existence(args.audio_input):
+            sys.exit(1)
+        audio_input = args.audio_input
+    else:
+        choice = start_screen()
+        if choice == '1':
+            youtube_url = input(
+                f"{bcolors.OKCYAN}Enter YouTube URL: {bcolors.ENDC}")
+            if not validate_youtube_url(youtube_url):
+                sys.exit(1)
+            output_dir = os.getcwd()
+            if not check_directory_writable(output_dir):
+                sys.exit(1)
+            video_filename = download_video(youtube_url, output_dir)
+            if not video_filename:
+                sys.exit(1)
+            audio_input = convert_to_mp3(video_filename, output_dir)
+            if not audio_input:
+                sys.exit(1)
+        elif choice == '2':
+            audio_input = input(
+                f"{bcolors.OKCYAN}Enter path to existing MP3 file: {bcolors.ENDC}")
+            if not check_file_existence(audio_input):
+                sys.exit(1)
+        elif choice == '3':
+            show_help()
+            return
+        elif choice == '4':
+            print(f"{bcolors.OKGREEN}Exiting...{bcolors.ENDC}")
+            return
+        else:
+            print(f"{bcolors.FAIL}Invalid choice. Exiting...{bcolors.ENDC}")
+            return
+
+    audio_output = args.output_name or (
+        os.path.splitext(audio_input)[0] + "_remix.mp3")
+    apply_vaporwave_effects(
+        shlex.quote(audio_input),
+        audio_output,
+        args.speed_ratio,
+        args.pitch_shift,
+        args.lowpass_cutoff,
+        bass_boost=args.bass_boost,
+        gain_db=args.gain_db,
+        oops=args.oops,
+        phaser=args.phaser,
+        tremolo=args.tremolo,
+        compand=args.compand,
+        no_reverb=args.no_reverb,
+    )
+
+
+if __name__ == "__main__":
+    main()
