@@ -1,31 +1,64 @@
 # YouTube Remix Script
 
-This Python script facilitates the creation of music remixes by applying various audio effects to MP3 files sourced from YouTube videos. It provides functionalities for downloading YouTube videos, extracting audio, and applying customizable effects like speed adjustment, pitch shift, and more.
+This Python project facilitates the creation of music remixes by applying various audio effects to MP3 files sourced from YouTube videos. It provides functionalities for downloading YouTube videos, extracting audio, and applying customizable effects like speed adjustment, pitch shift, and more.
 
 ## Prerequisites
 
 - Python 3.x installed on your system.
-- A code editor software (like vscode)
+- A code editor software (like VSCode).
 
 ## Usage
 
+There are two scripts in this project: `remix_script_menu.py` and `remix_script.py`.
+
+### `remix_script_menu.py`
+
+This script provides an interactive menu to guide users through downloading YouTube videos and applying audio effects.
+
+#### Steps to Use
+
 1. **Clone the Repository:**
-   ```
+   ```sh
    git clone https://github.com/FireEmblem59/audio-modification.git
    cd audio-modification
    ```
 
 2. **Install Dependencies:**
-   ```
+   ```sh
    pip install -r requirements.txt
    ```
 
 3. **Run the Script:**
+   ```sh
+   python remix_script_menu.py
    ```
+
+4. **Interactive Menu:**
+   - Select an option from the menu to download and convert a YouTube video, apply effects to an existing MP3 file, view help, or exit.
+
+### `remix_script.py`
+
+This script allows users to apply audio effects directly via command-line arguments without the interactive menu.
+
+#### Steps to Use
+
+1. **Clone the Repository:**
+   ```sh
+   git clone https://github.com/FireEmblem59/audio-modification.git
+   cd audio-modification
+   ```
+
+2. **Install Dependencies:**
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+3. **Run the Script:**
+   ```sh
    python remix_script.py [-h] [-o OUTPUT_NAME] [-a AUDIO_INPUT] [-u YOUTUBE_URL]
-                         [-s SPEED_RATIO] [-p PITCH_SHIFT] [-l LOWPASS_CUTOFF]
-                         [-b BASS_BOOST] [-ga GAIN_DB] [-op] [-ph] [-tr] [-co] [-nr]
-                         [-e {slowed_reversed,sped_up,keep_original}]
+                          [-s SPEED_RATIO] [-p PITCH_SHIFT] [-l LOWPASS_CUTOFF]
+                          [-b BASS_BOOST] [-ga GAIN_DB] [-op] [-ph] [-tr] [-co] [-nr]
+                          [-e {slowed_reversed,sped_up,keep_original}]
    ```
 
 ## Arguments
@@ -47,13 +80,22 @@ This Python script facilitates the creation of music remixes by applying various
 
 ## Examples
 
-1. Download a YouTube video, apply slowed and reversed effect:
+### Using `remix_script_menu.py`
+
+1. **Run the Interactive Script:**
+   ```sh
+   python remix_script_menu.py
    ```
+
+### Using `remix_script.py`
+
+1. **Download a YouTube video and apply slowed and reversed effect:**
+   ```sh
    python remix_script.py -u <youtube_url> -e slowed_reversed
    ```
 
-2. Remix an existing audio file with custom effects:
-   ```
+2. **Remix an existing audio file with custom effects:**
+   ```sh
    python remix_script.py -a <audio_file.mp3> -s 1.2 -p -25 -l 5000 -b 5 -ga 3 -ph -tr
    ```
 
